@@ -10,8 +10,8 @@ import (
 Controller is the central struct from which the entire engine can be controlled.
 */
 type Controller struct {
-	window    *sdl.Window
-	drawables map[string]Drawable
+	window   *sdl.Window
+	entities map[string]interface{}
 }
 
 /*
@@ -23,10 +23,10 @@ func Build() (*Controller, error) {
 	// MUST guarantee controller always runs in same OS thread
 	runtime.LockOSThread()
 	sdl.Init(sdl.INIT_EVERYTHING)
-	c := &Controller{
-		drawables: make(map[string]Drawable)}
+	c := &Controller{}
+	c.entities = make(map[string]interface{})
 	// window
-	window, err := sdl.CreateWindow("test", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 800, 600, sdl.WINDOW_SHOWN)
+	window, err := sdl.CreateWindow("Orbiting", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 800, 600, sdl.WINDOW_SHOWN)
 	if err != nil {
 		return nil, err
 	}
