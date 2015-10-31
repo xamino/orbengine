@@ -1,15 +1,21 @@
 package orbengine
 
-import "github.com/veandco/go-sdl2/sdl"
+import (
+	"log"
+	"runtime"
+
+	"github.com/veandco/go-sdl2/sdl"
+)
 
 /*
 Destroy the controller object.
 */
 func (c *Controller) Destroy() {
-	c.renderer.Destroy()
 	c.window.Destroy()
 	// TODO can I call this anywhere? is this... ok?
 	sdl.Quit()
+	// MUST unlock OS thread
+	runtime.UnlockOSThread()
 }
 
 /*
@@ -31,9 +37,15 @@ func (c *Controller) AddEntity(id string, entity interface{}) error {
 Iterate TODO
 */
 func (c *Controller) Iterate() {
-	c.renderer.Clear()
-	for _, d := range c.drawables {
-		d.Draw(c.renderer)
+	renderer, err := c.window.GetRenderer()
+	if err != nil {
+		log.Println("window.GetRenderer error:", err, renderer)
+		return
 	}
-	c.renderer.Present()
+	renderer.SetDrawColor(0, 0, 0, 255)
+	renderer.Clear()
+	for _, d := range c.drawables {
+		d.Draw(renderer)
+	}
+	renderer.Present()
 }
