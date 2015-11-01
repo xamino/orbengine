@@ -13,3 +13,7 @@ func (w *Renderer) SetDrawColor(r, g, b, a uint8) {
 func (w *Renderer) FillRect(rect *sdl.Rect) {
 	w.renderer.FillRect(rect)
 }
+
+func (w *Renderer) GetRendererOutputSize() (int, int, error) {
+	return w.renderer.GetRendererOutputSize()
+}
