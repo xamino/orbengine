@@ -11,6 +11,14 @@ type Drawable interface {
 }
 
 /*
+Renderable is an alternative interface for Drawable for manually drawing entities.
+*/
+type Renderable interface {
+	Placeable
+	Render(renderer *Renderer)
+}
+
+/*
 Placeable is the interface used to determine where to place an object.
 */
 type Placeable interface {

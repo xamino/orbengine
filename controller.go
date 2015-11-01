@@ -50,6 +50,7 @@ func (c *Controller) Iterate() {
 	}
 	renderer.SetDrawColor(0, 0, 0, 255)
 	renderer.Clear()
+	wrapped := &Renderer{renderer: renderer}
 	// viewport is used to check if we even have to draw something
 	viewport := &sdl.Rect{}
 	renderer.GetViewport(viewport)
@@ -60,8 +61,12 @@ func (c *Controller) Iterate() {
 		if actionEntity, actionable := entity.(Actionable); actionable {
 			actionEntity.Action()
 		}
-		// draw entities
-		if e, drawable := entity.(Drawable); drawable {
+		// determine draw method. Texture is preferred over Render!
+		eR, renderable := entity.(Renderable)
+		eD, drawable := entity.(Drawable)
+		if drawable || renderable {
+			// drawbale or renderable both are placeable
+			e, _ := entity.(Placeable)
 			// TODO this can be precalculated and reused if not changed, plus multithreaded for all entities
 			// TODO apply scale / unit
 			worldBound := &sdl.Rect{
@@ -73,15 +78,24 @@ func (c *Controller) Iterate() {
 			if _, intersects := viewport.Intersect(worldBound); !intersects {
 				continue
 			}
-			// create texture to draw to
-			text, err := renderer.CreateTexture(sdl.PIXELFORMAT_RGBA8888, sdl.TEXTUREACCESS_STATIC,
-				e.Width(), e.Height())
-			if err != nil {
-				log.Println("renderer.CreateTexture error:", err)
-				continue
+			var text *sdl.Texture
+			if drawable {
+				// create texture to draw to
+				text, err = renderer.CreateTexture(sdl.PIXELFORMAT_RGBA8888, sdl.TEXTUREACCESS_STATIC,
+					e.Width(), e.Height())
+				if err != nil {
+					log.Println("renderer.CreateTexture error:", err)
+					continue
+				}
+				// allow entity to draw to texture FIXME: reuse?
+				eD.Texture(text)
+			} else {
+				text, _ = renderer.CreateTexture(sdl.PIXELFORMAT_RGBA8888, sdl.TEXTUREACCESS_TARGET,
+					e.Width(), e.Height())
+				renderer.SetRenderTarget(text)
+				eR.Render(wrapped)
+				renderer.SetRenderTarget(nil)
 			}
-			// allow entity to draw to texture FIXME: reuse?
-			e.Texture(text)
 			// TODO last nil is rotation center, use offset to calculate
 			renderer.CopyEx(text, nil, worldBound, e.Rotation(), nil, 0)
 		}
