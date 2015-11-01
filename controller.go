@@ -30,6 +30,7 @@ func (c *Controller) AddEntity(id string, entity interface{}) error {
 	}
 	switch entity.(type) {
 	case Drawable:
+	case Renderable:
 	case Actionable:
 	default:
 		return ErrMissingComponents
@@ -50,12 +51,11 @@ func (c *Controller) Iterate() {
 	}
 	renderer.SetDrawColor(0, 0, 0, 255)
 	renderer.Clear()
-	wrapped := &Renderer{renderer: renderer}
 	// viewport is used to check if we even have to draw something
 	viewport := &sdl.Rect{}
 	renderer.GetViewport(viewport)
 	// run for all entities
-	for _, entity := range c.entities {
+	for id, entity := range c.entities {
 		// TODO update everything else BEFORE draw except state thingy
 		// execute actions
 		if actionEntity, actionable := entity.(Actionable); actionable {
@@ -65,7 +65,7 @@ func (c *Controller) Iterate() {
 		eR, renderable := entity.(Renderable)
 		eD, drawable := entity.(Drawable)
 		if drawable || renderable {
-			// drawbale or renderable both are placeable
+			// drawable or renderable both are placeable
 			e, _ := entity.(Placeable)
 			// TODO this can be precalculated and reused if not changed, plus multithreaded for all entities
 			// TODO apply scale / unit
@@ -78,26 +78,35 @@ func (c *Controller) Iterate() {
 			if _, intersects := viewport.Intersect(worldBound); !intersects {
 				continue
 			}
-			var text *sdl.Texture
-			if drawable {
-				// create texture to draw to
-				text, err = renderer.CreateTexture(sdl.PIXELFORMAT_RGBA8888, sdl.TEXTUREACCESS_STATIC,
-					e.Width(), e.Height())
-				if err != nil {
-					log.Println("renderer.CreateTexture error:", err)
-					continue
+			// check if we need to draw / redraw entity
+			text, cacheExists := c.textCache[id]
+			if !cacheExists || e.Redraw() {
+				// if previous existed, destroy
+				if cacheExists {
+					text.Destroy()
 				}
-				// allow entity to draw to texture FIXME: reuse?
-				eD.Texture(text)
-			} else {
-				text, _ = renderer.CreateTexture(sdl.PIXELFORMAT_RGBA8888, sdl.TEXTUREACCESS_TARGET,
-					e.Width(), e.Height())
-				renderer.SetRenderTarget(text)
-				eR.Render(wrapped)
-				renderer.SetRenderTarget(nil)
+				if drawable {
+					// create texture to draw to
+					text, err = renderer.CreateTexture(sdl.PIXELFORMAT_RGBA8888, sdl.TEXTUREACCESS_STATIC,
+						e.Width(), e.Height())
+					if err != nil {
+						log.Println("renderer.CreateTexture error:", err)
+						continue
+					}
+					// allow entity to draw to texture FIXME: reuse?
+					eD.Texture(text)
+				} else {
+					text, _ = renderer.CreateTexture(sdl.PIXELFORMAT_RGBA8888, sdl.TEXTUREACCESS_TARGET,
+						e.Width(), e.Height())
+					renderer.SetRenderTarget(text)
+					eR.Render(c.wrapped)
+					renderer.SetRenderTarget(nil)
+				}
+				// update cache
+				c.textCache[id] = text
 			}
 			// TODO last nil is rotation center, use offset to calculate
-			renderer.CopyEx(text, nil, worldBound, e.Rotation(), nil, 0)
+			renderer.CopyEx(c.textCache[id], nil, worldBound, e.Rotation(), nil, 0)
 		}
 	} // for entities
 	renderer.Present()

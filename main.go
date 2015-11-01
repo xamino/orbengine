@@ -10,8 +10,10 @@ import (
 Controller is the central struct from which the entire engine can be controlled.
 */
 type Controller struct {
-	window   *sdl.Window
-	entities map[string]interface{}
+	window    *sdl.Window
+	wrapped   *Renderer
+	entities  map[string]interface{}
+	textCache map[string]*sdl.Texture
 }
 
 /*
@@ -25,6 +27,7 @@ func Build() (*Controller, error) {
 	sdl.Init(sdl.INIT_EVERYTHING)
 	c := &Controller{}
 	c.entities = make(map[string]interface{})
+	c.textCache = make(map[string]*sdl.Texture)
 	// window
 	window, err := sdl.CreateWindow("Orbiting", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 800, 600, sdl.WINDOW_SHOWN)
 	if err != nil {
@@ -32,9 +35,11 @@ func Build() (*Controller, error) {
 	}
 	c.window = window
 	// create renderer (reference kept by window, no need to do it ourselves)
-	_, err = sdl.CreateRenderer(c.window, -1, 0)
+	renderer, err := sdl.CreateRenderer(c.window, -1, 0)
 	if err != nil {
 		return nil, err
 	}
+	// however, we DO want to keep just a single instance of the wrapper
+	c.wrapped = &Renderer{renderer: renderer}
 	return c, nil
 }

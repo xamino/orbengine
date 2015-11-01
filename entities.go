@@ -28,6 +28,7 @@ type Placeable interface {
 	Width() int
 	Height() int
 	Rotation() float64
+	Redraw() bool // TODO this should be somewhere else, but for now...
 }
 
 /*
