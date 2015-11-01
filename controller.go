@@ -30,9 +30,7 @@ func (c *Controller) AddEntity(id string, entity interface{}) error {
 	}
 	switch entity.(type) {
 	case Drawable:
-	case Boundable:
 	case Actionable:
-	case Positionable:
 	default:
 		return ErrMissingComponents
 	}
@@ -57,24 +55,35 @@ func (c *Controller) Iterate() {
 	renderer.GetViewport(viewport)
 	// run for all entities
 	for _, entity := range c.entities {
-		// TODO update everything else BEFORE: Action, ...
+		// TODO update everything else BEFORE draw except state thingy
 		// execute actions
 		if actionEntity, actionable := entity.(Actionable); actionable {
 			actionEntity.Action()
 		}
-		// draw entities with bounds check if available
-		boundEntity, boundable := entity.(Boundable)
-		if drawEntity, drawable := entity.(Drawable); drawable {
-			if boundable {
-				_, intersects := viewport.Intersect(boundEntity.Bounds())
-				// if it doesn't intersect we don't need to even draw it, so continue to next entity
-				if !intersects {
-					continue
-				}
-				// if it DOES intersect, keep going to draw
+		// draw entities
+		if e, drawable := entity.(Drawable); drawable {
+			// TODO this can be precalculated and reused if not changed, plus multithreaded for all entities
+			// TODO apply scale / unit
+			worldBound := &sdl.Rect{
+				X: e.Position().X - int32(e.Width()/2),
+				Y: e.Position().Y - int32(e.Height()/2),
+				W: int32(e.Width()),
+				H: int32(e.Height())}
+			// check if we even need to draw it
+			if _, intersects := viewport.Intersect(worldBound); !intersects {
+				continue
 			}
-			// draw if applicable
-			drawEntity.Draw(renderer)
+			// create texture to draw to
+			text, err := renderer.CreateTexture(sdl.PIXELFORMAT_RGBA8888, sdl.TEXTUREACCESS_STATIC,
+				e.Width(), e.Height())
+			if err != nil {
+				log.Println("renderer.CreateTexture error:", err)
+				continue
+			}
+			// allow entity to draw to texture FIXME: reuse?
+			e.Texture(text)
+			// TODO last nil is rotation center, use offset to calculate
+			renderer.CopyEx(text, nil, worldBound, e.Rotation(), nil, 0)
 		}
 	} // for entities
 	renderer.Present()

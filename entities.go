@@ -3,26 +3,23 @@ package orbengine
 import "github.com/veandco/go-sdl2/sdl"
 
 /*
-Drawable is the interface for drawing entities.
-
-TODO: wrap sdl.Renderer in own renderer from controller to control access to methods?
+Drawable is the interface an entity must fulfill to be drawable.
 */
 type Drawable interface {
-	Draw(renderer *sdl.Renderer)
+	Placeable
+	Texture(texture *sdl.Texture)
 }
 
 /*
-Boundable is the interface for entity bounds.
+Placeable is the interface used to determine where to place an object.
 */
-type Boundable interface {
-	Bounds() *sdl.Rect
-}
-
-/*
-Positionable is the interface for entity positions.
-*/
-type Positionable interface {
-	Position() (int32, int32)
+type Placeable interface {
+	Position() *sdl.Point
+	Offset() *sdl.Point // Offset is center of orientation offset from position. FIXME use and apply
+	Scale() int
+	Width() int
+	Height() int
+	Rotation() float64
 }
 
 /*
