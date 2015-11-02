@@ -2,6 +2,10 @@ package orbengine
 
 import "github.com/veandco/go-sdl2/sdl"
 
+/*
+Renderer wraps the sdl.Renderer to control what methods are available for
+drawing interfaces.
+*/
 type Renderer struct {
 	renderer *sdl.Renderer
 }

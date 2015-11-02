@@ -10,10 +10,17 @@ import (
 Controller is the central struct from which the entire engine can be controlled.
 */
 type Controller struct {
-	window    *sdl.Window
-	wrapped   *Renderer
-	entities  map[string]interface{}
-	textCache map[string]*sdl.Texture
+	window       *sdl.Window
+	wrapped      *Renderer
+	entities     map[string]interface{}
+	keyreceivers map[string][]*keyReceive
+	textCache    map[string]*sdl.Texture
+}
+
+type keyReceive struct {
+	lastState bool
+	onPress   func()
+	onRelease func()
 }
 
 /*
@@ -25,8 +32,10 @@ func Build() (*Controller, error) {
 	// MUST guarantee controller always runs in same OS thread
 	runtime.LockOSThread()
 	sdl.Init(sdl.INIT_EVERYTHING)
+	// prepare basic Controller stuff
 	c := &Controller{}
 	c.entities = make(map[string]interface{})
+	c.keyreceivers = make(map[string][]*keyReceive)
 	c.textCache = make(map[string]*sdl.Texture)
 	// window
 	window, err := sdl.CreateWindow("Orbiting", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 800, 600, sdl.WINDOW_SHOWN)

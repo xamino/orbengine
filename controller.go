@@ -23,11 +23,12 @@ AddEntity will add the entity to the controller. If the entity does not match
 any orbengine interface, an error is returned.
 */
 func (c *Controller) AddEntity(id string, entity interface{}) error {
-	// TODO check if entity already exists? do we allow adding entities multiple times?
+	// check if entity already exists -> id must be unique
 	_, exists := c.entities[id]
 	if exists {
 		return ErrEntityIDExists
 	}
+	// ensure that interface fullfills at least ONE interface
 	switch entity.(type) {
 	case Drawable:
 	case Renderable:
@@ -35,14 +36,71 @@ func (c *Controller) AddEntity(id string, entity interface{}) error {
 	default:
 		return ErrMissingComponents
 	}
+	// if we reach this -> add
 	c.entities[id] = entity
 	return nil
 }
 
 /*
-Iterate TODO
+RegisterKey allows entities to receive key presses. TODO explain how bools are
+to be interpreted.
+*/
+func (c *Controller) RegisterKey(key string, onPress, onRelease func()) error {
+	// check if key is valid
+	code := sdl.GetKeyFromName(key)
+	// FIXME determine how we can check for illegal values
+	log.Println("DEBUG: illegal code? :", code)
+	// make keyReceive struct
+	receive := &keyReceive{
+		lastState: false,
+		onPress:   onPress,
+		onRelease: onRelease}
+	_, exists := c.keyreceivers[key]
+	if !exists {
+		// if new key --> create array with first chan
+		c.keyreceivers[key] = []*keyReceive{receive}
+	} else {
+		// if other entities already registered -> append chan
+		c.keyreceivers[key] = append(c.keyreceivers[key], receive)
+	}
+	return nil
+}
+
+/*
+Iterate advances the controller by one step.
 */
 func (c *Controller) Iterate() {
+	// first handle all the events
+	c.handleEvents()
+	// then step each entity
+	c.iterateEntities()
+}
+
+func (c *Controller) handleEvents() {
+	// read all events
+	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+		switch et := event.(type) {
+		case *sdl.QuitEvent:
+			// TODO handle special stuff, for exampe quit
+			log.Println("TODO: how do we apply this... ?")
+		case *sdl.KeyDownEvent:
+			c.sendKeyEvents(sdl.GetKeyName(et.Keysym.Sym), true)
+		case *sdl.KeyUpEvent:
+			c.sendKeyEvents(sdl.GetKeyName(et.Keysym.Sym), false)
+		// these are events we know but currently don't use FIXME implement
+		case *sdl.WindowEvent:
+		case *sdl.TextInputEvent:
+		case *sdl.TextEditingEvent:
+		case *sdl.MouseButtonEvent:
+		case *sdl.MouseMotionEvent:
+		case *sdl.MouseWheelEvent:
+		default:
+			log.Printf("Unknown event: %T\n", et)
+		}
+	}
+}
+
+func (c *Controller) iterateEntities() {
 	// prepare to draw
 	renderer, err := c.window.GetRenderer()
 	if err != nil {
@@ -56,8 +114,7 @@ func (c *Controller) Iterate() {
 	renderer.GetViewport(viewport)
 	// run for all entities
 	for id, entity := range c.entities {
-		// TODO update everything else BEFORE draw except state thingy
-		// execute actions
+		// allow execute of actions
 		if actionEntity, actionable := entity.(Actionable); actionable {
 			actionEntity.Action()
 		}
@@ -110,4 +167,34 @@ func (c *Controller) Iterate() {
 		}
 	} // for entities
 	renderer.Present()
+}
+
+/*
+sendKeyEvents is a helper function that sends the given key with the given state
+to all known keyreceivers that have registered for it.
+*/
+func (c *Controller) sendKeyEvents(key string, state bool) {
+	// check if any interest exists
+	receivers, exist := c.keyreceivers[key]
+	if !exist {
+		return
+	}
+	// if yes send state to all channels
+	for index := range receivers { // use index because we'll set a value directly
+		// don't send multiple times
+		if receivers[index].lastState == state {
+			continue
+		}
+		receivers[index].lastState = state
+		// execute if available
+		if state {
+			if receivers[index].onPress != nil {
+				receivers[index].onPress()
+			}
+		} else {
+			if receivers[index].onRelease != nil {
+				receivers[index].onRelease()
+			}
+		}
+	}
 }
