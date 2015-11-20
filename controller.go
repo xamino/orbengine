@@ -22,28 +22,47 @@ func (c *Controller) Destroy() {
 AddEntity will add the entity to the controller. If the entity does not match
 any orbengine interface, an error is returned.
 */
-func (c *Controller) AddEntity(id string, entity interface{}) error {
+func (c *Controller) AddEntity(entity Identifier) error {
 	// check if entity already exists -> id must be unique
-	_, exists := c.entities[id]
+	_, exists := c.entities[entity.Identification()]
 	if exists {
 		return ErrEntityIDExists
 	}
+	// include is the flag for entites that can be drawn
+	var include bool
 	// ensure that interface fullfills at least ONE interface
 	switch entity.(type) {
 	case Drawable:
+		include = true
 	case Renderable:
+		include = true
 	case Actionable:
+	case Placeable: // Renderable and Drawable fullfull this
 	default:
 		return ErrMissingComponents
 	}
+	// if include is true, include the entity in the ordered draw list
+	if include {
+		// include entity in sorted renderable
+		p, valid := entity.(Placeable)
+		if !valid {
+			// shouldn't happen because of above switch, so catch
+			log.Fatal("include was triggered for non-includeable entity!")
+		}
+		// append: this sorts the new entity into the complete list
+		err := c.renderable.append(p)
+		if err != nil {
+			return err
+		}
+	}
 	// if we reach this -> add
-	c.entities[id] = entity
+	c.entities[entity.Identification()] = entity
 	return nil
 }
 
 /*
-RegisterKey allows entities to receive key presses. TODO explain how bools are
-to be interpreted.
+RegisterKey allows entities to receive key presses by registering the functions
+to execute when a key is either pressed or released.
 */
 func (c *Controller) RegisterKey(key string, onPress, onRelease func()) error {
 	// check if key is valid
@@ -112,8 +131,8 @@ func (c *Controller) iterateEntities() {
 	// viewport is used to check if we even have to draw something
 	viewport := &sdl.Rect{}
 	renderer.GetViewport(viewport)
-	// run for all entities
-	for id, entity := range c.entities {
+	// run for all ordered, renderable entities
+	for _, entity := range c.renderable.get() {
 		// allow execute of actions
 		if actionEntity, actionable := entity.(Actionable); actionable {
 			actionEntity.Action()
@@ -136,7 +155,7 @@ func (c *Controller) iterateEntities() {
 				continue
 			}
 			// check if we need to draw / redraw entity
-			text, cacheExists := c.textCache[id]
+			text, cacheExists := c.textCache[entity.Identification()]
 			if !cacheExists || e.Redraw() {
 				// if previous existed, destroy
 				if cacheExists {
@@ -160,10 +179,10 @@ func (c *Controller) iterateEntities() {
 					renderer.SetRenderTarget(nil)
 				}
 				// update cache
-				c.textCache[id] = text
+				c.textCache[entity.Identification()] = text
 			}
 			// TODO last nil is rotation center, use offset to calculate
-			renderer.CopyEx(c.textCache[id], nil, worldBound, e.Rotation(), nil, 0)
+			renderer.CopyEx(c.textCache[entity.Identification()], nil, worldBound, e.Rotation(), nil, 0)
 		}
 	} // for entities
 	renderer.Present()

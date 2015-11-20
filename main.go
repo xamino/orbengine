@@ -10,11 +10,12 @@ import (
 Controller is the central struct from which the entire engine can be controlled.
 */
 type Controller struct {
-	window       *sdl.Window
-	wrapped      *Renderer
-	entities     map[string]interface{}
-	keyreceivers map[string][]*keyReceive
-	textCache    map[string]*sdl.Texture
+	window       *sdl.Window              // window is the window instance.
+	wrapped      *Renderer                // wrapped is a locked down version of the SDL renderer.
+	renderable   *ordered                 // renderable is a sorted list of entities that are drawn.
+	entities     map[string]interface{}   // entities is a list of all active entities.
+	keyreceivers map[string][]*keyReceive // keyreceivers holds structs that trigger on key presses.
+	textCache    map[string]*sdl.Texture  // textCache is a list of cached textures used to draw entities.
 }
 
 type keyReceive struct {
@@ -34,6 +35,7 @@ func Build() (*Controller, error) {
 	sdl.Init(sdl.INIT_EVERYTHING)
 	// prepare basic Controller stuff
 	c := &Controller{}
+	c.renderable = makeOrdered()
 	c.entities = make(map[string]interface{})
 	c.keyreceivers = make(map[string][]*keyReceive)
 	c.textCache = make(map[string]*sdl.Texture)
