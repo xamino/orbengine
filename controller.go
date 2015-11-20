@@ -156,13 +156,12 @@ func (c *Controller) iterateEntities() {
 			}
 			// check if we need to draw / redraw entity
 			text, cacheExists := c.textCache[entity.Identification()]
-			if !cacheExists {
-				log.Println(e.Identification(), "cache miss: (re)drawing texture")
-			}
 			if !cacheExists || e.Redraw() {
 				// if previous existed, destroy
 				if cacheExists {
 					text.Destroy()
+				} else {
+					log.Println(e.Identification(), "cache miss: (re)drawing texture")
 				}
 				if drawable {
 					// create texture to draw to
