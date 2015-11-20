@@ -1,6 +1,6 @@
 package orbengine
 
-import "log"
+import "sort"
 
 /*
 ordered is a helper struct that sorts Renderable and Drawable on append. Allows
@@ -12,7 +12,7 @@ type ordered struct {
 
 func makeOrdered() *ordered {
 	return &ordered{
-		list: make([]Placeable, 32)} // TODO is 32 a good default?
+		list: make([]Placeable, 0)}
 }
 
 func (o *ordered) append(entity Placeable) error {
@@ -22,11 +22,38 @@ func (o *ordered) append(entity Placeable) error {
 	default:
 		return ErrMissingComponents
 	}
-	log.Println("TODO: sort")
+	// append
 	o.list = append(o.list, entity)
+	// sort
+	sortable := byLevel(o.list)
+	sort.Sort(sortable)
+	o.list = []Placeable(sortable)
+	// all ok
 	return nil
 }
 
 func (o *ordered) get() []Placeable {
 	return o.list
+}
+
+type byLevel []Placeable
+
+func (bl byLevel) Len() int {
+	return len(bl)
+}
+
+func (bl byLevel) Less(i, j int) bool {
+	// if the object is nil, sort that non nil objects are worth less.
+	if bl[i] == nil {
+		return true
+	}
+	if bl[j] == nil {
+		return false
+	}
+	// otherwise sort by layer
+	return bl[i].Layer() < bl[j].Layer()
+}
+
+func (bl byLevel) Swap(i, j int) {
+	bl[i], bl[j] = bl[j], bl[i]
 }

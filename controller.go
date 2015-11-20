@@ -87,6 +87,8 @@ func (c *Controller) RegisterKey(key string, onPress, onRelease func()) error {
 
 /*
 Iterate advances the controller by one step.
+
+TODO make engine handle game loop... :P
 */
 func (c *Controller) Iterate() {
 	// first handle all the events
