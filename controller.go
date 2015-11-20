@@ -102,8 +102,12 @@ func (c *Controller) handleEvents() {
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch et := event.(type) {
 		case *sdl.QuitEvent:
-			// TODO handle special stuff, for exampe quit
-			log.Println("TODO: how do we apply this... ?")
+			log.Println("Want to quit, but how do we apply this... ?")
+			/*
+				c.Destroy()
+				return
+				// NOTE: caller keeps calling Iterate because it doesn't know we're done... how to fix?
+			*/
 		case *sdl.KeyDownEvent:
 			c.sendKeyEvents(sdl.GetKeyName(et.Keysym.Sym), true)
 		case *sdl.KeyUpEvent:
