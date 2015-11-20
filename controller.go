@@ -156,6 +156,9 @@ func (c *Controller) iterateEntities() {
 			}
 			// check if we need to draw / redraw entity
 			text, cacheExists := c.textCache[entity.Identification()]
+			if !cacheExists {
+				log.Println(e.Identification(), "cache miss: (re)drawing texture")
+			}
 			if !cacheExists || e.Redraw() {
 				// if previous existed, destroy
 				if cacheExists {
@@ -169,14 +172,17 @@ func (c *Controller) iterateEntities() {
 						log.Println("renderer.CreateTexture error:", err)
 						continue
 					}
-					// allow entity to draw to texture FIXME: reuse?
+					// allow entity to draw to texture
 					eD.Texture(text)
-				} else {
+				} else if renderable {
 					text, _ = renderer.CreateTexture(sdl.PIXELFORMAT_RGBA8888, sdl.TEXTUREACCESS_TARGET,
 						e.Width(), e.Height())
 					renderer.SetRenderTarget(text)
 					eR.Render(c.wrapped)
 					renderer.SetRenderTarget(nil)
+				} else {
+					// fail loudly if invalid entity
+					log.Fatal("iterateEntities:", e.Identification(), "neither drawable nor renderable!")
 				}
 				// update cache
 				c.textCache[entity.Identification()] = text
