@@ -90,7 +90,7 @@ Iterate advances the controller by one step.
 */
 func (c *Controller) Iterate() {
 	// first handle all the events
-	c.handleEvents()
+	c.handleEvents() // TODO this must be called more often: if only every x ms, it WILL miss keypresses! FIXME
 	// then step each entity
 	c.iterateEntities()
 }
@@ -161,8 +161,10 @@ func (c *Controller) iterateEntities() {
 				if cacheExists {
 					text.Destroy()
 				} else {
+					// if cache never existed, log creation
 					log.Println(e.Identification(), "cache miss: (re)drawing texture")
 				}
+				// get texture according to type of entity
 				if drawable {
 					// create texture to draw to
 					text, err = renderer.CreateTexture(sdl.PIXELFORMAT_RGBA8888, sdl.TEXTUREACCESS_STATIC,
@@ -174,10 +176,14 @@ func (c *Controller) iterateEntities() {
 					// allow entity to draw to texture
 					eD.Texture(text)
 				} else if renderable {
+					// create texture to draw to
 					text, _ = renderer.CreateTexture(sdl.PIXELFORMAT_RGBA8888, sdl.TEXTUREACCESS_TARGET,
 						e.Width(), e.Height())
+					// prepare
 					renderer.SetRenderTarget(text)
+					// give wrapper
 					eR.Render(c.wrapped)
+					// unprepare
 					renderer.SetRenderTarget(nil)
 				} else {
 					// fail loudly if invalid entity
